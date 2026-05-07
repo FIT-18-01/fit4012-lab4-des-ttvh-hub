@@ -276,29 +276,147 @@ class DES {
     
             return ciphertext;
         }
+
+        string decrypt(const string& input) {
+            // Apply initial permutation
+            string perm = initial_permutation(input);
+    
+            // Split into left and right parts
+            string left = perm.substr(0, 32);
+            string right = perm.substr(32, 32);
+    
+            // 16 Feistel rounds with reversed round keys
+            for (int i = 15; i >= 0; i--) {
+                // Expand right half to 48 bits
+                string right_expanded = "";
+                for (int j = 0; j < 48; j++) {
+                    right_expanded += right[expansion_table[j] - 1];
+                }
+    
+                // XOR with round key (reversed)
+                string xored = Xor(round_keys[i], right_expanded);
+    
+                // S-box substitution
+                string res = "";
+                for (int j = 0; j < 8; j++) {
+                    string row1 = xored.substr(j * 6, 1) + xored.substr(j * 6 + 5, 1);
+                    int row = convert_binary_to_decimal(row1);
+    
+                    string col1 = xored.substr(j * 6 + 1, 4);
+                    int col = convert_binary_to_decimal(col1);
+    
+                    int val = substition_boxes[j][row][col];
+                    res += convert_decimal_to_binary(val);
+                }
+    
+                // Permutation after S-box
+                string perm2 = "";
+                for (int j = 0; j < 32; j++) {
+                    perm2 += res[permutation_tab[j] - 1];
+                }
+    
+                // XOR permuted result with left, then swap
+                string new_right = Xor(perm2, left);
+                left = right;
+                right = new_right;
+            }
+    
+            // Swap final halves
+            string combined_text = right + left;
+    
+            // Apply inverse initial permutation
+            string plaintext = inverse_initial_permutation(combined_text);
+    
+            return plaintext;
+        }
 };
     
 // Main function
-int main() {
-    // Example plaintext (64 bits)
-    string plaintext = "0001001000110100010101100111100010011010101111001101111011110001";
-    
-    // Example key (64 bits)
-    string key = "0001001100110100010101110111100110011011101111001101111111110001";
-    
-    // Generate round keys
-    KeyGenerator keygen(key);
-    keygen.generateRoundKeys(); 
-    
-    vector<string> roundKeys = keygen.getRoundKeys();
-    
-    // Create DES object
-    DES des(roundKeys);
-    
-    // Encrypt
-    string ciphertext = des.encrypt(plaintext);
-    
-    cout << "Ciphertext: " << ciphertext << endl;
+int main(int argc, char* argv[]) {
+    if (argc != 4) {
+        cout << "Usage: " << argv[0] << " <encrypt|decrypt|triple_encrypt|triple_decrypt> <input_binary_string> <key_binary_string>" << endl;
+        return 1;
+    }
+
+    string mode = argv[1];
+    string input = argv[2];
+    string key = argv[3];
+
+    // Pad input to multiple of 64 bits with '0's
+    while (input.length() % 64 != 0) {
+        input += '0';
+    }
+
+    string output = "";
+
+    if (mode == "encrypt" || mode == "decrypt") {
+        if (key.length() != 64) {
+            cout << "Key must be 64 bits for single DES" << endl;
+            return 1;
+        }
+        // Generate round keys
+        KeyGenerator keygen(key);
+        keygen.generateRoundKeys(); 
+        
+        vector<string> roundKeys = keygen.getRoundKeys();
+        
+        // Create DES object
+        DES des(roundKeys);
+
+        // Process each 64-bit block
+        for (size_t i = 0; i < input.length(); i += 64) {
+            string block = input.substr(i, 64);
+            if (mode == "encrypt") {
+                output += des.encrypt(block);
+            } else {
+                output += des.decrypt(block);
+            }
+        }
+    } else if (mode == "triple_encrypt" || mode == "triple_decrypt") {
+        if (key.length() != 192) {
+            cout << "Key must be 192 bits for TripleDES" << endl;
+            return 1;
+        }
+        string key1 = key.substr(0, 64);
+        string key2 = key.substr(64, 64);
+        string key3 = key.substr(128, 64);
+
+        KeyGenerator keygen1(key1);
+        keygen1.generateRoundKeys();
+        vector<string> roundKeys1 = keygen1.getRoundKeys();
+        DES des1(roundKeys1);
+
+        KeyGenerator keygen2(key2);
+        keygen2.generateRoundKeys();
+        vector<string> roundKeys2 = keygen2.getRoundKeys();
+        DES des2(roundKeys2);
+
+        KeyGenerator keygen3(key3);
+        keygen3.generateRoundKeys();
+        vector<string> roundKeys3 = keygen3.getRoundKeys();
+        DES des3(roundKeys3);
+
+        // Process each 64-bit block
+        for (size_t i = 0; i < input.length(); i += 64) {
+            string block = input.substr(i, 64);
+            string temp;
+            if (mode == "triple_encrypt") {
+                temp = des1.encrypt(block);
+                temp = des2.decrypt(temp);
+                temp = des3.encrypt(temp);
+            } else {
+                temp = des3.decrypt(block);
+                temp = des2.encrypt(temp);
+                temp = des1.decrypt(temp);
+            }
+            output += temp;
+        }
+    } else {
+        cout << "Invalid mode. Use 'encrypt', 'decrypt', 'triple_encrypt', or 'triple_decrypt'" << endl;
+        return 1;
+    }
+
+    cout << output << endl;
     
     return 0;
 }

@@ -57,33 +57,39 @@ cmake --build build
 
 ## 3. Input / Đầu vào
 
-TODO_STUDENT: Mô tả rõ đầu vào của chương trình sau khi em hoàn thiện bài lab.
+Chương trình nhận đầu vào từ command line arguments:
 
-Gợi ý nên nêu:
-- plaintext đang được nhập như thế nào
-- key đang được nhập như thế nào
-- chương trình nhận 1 block hay nhiều block
-- định dạng dữ liệu là chuỗi bit, chuỗi ký tự hay file
+- **Mode**: `encrypt`, `decrypt`, `triple_encrypt`, `triple_decrypt`
+- **Input**: Chuỗi bit đại diện cho plaintext (đối với encrypt) hoặc ciphertext (đối với decrypt). Độ dài bất kỳ, sẽ được pad nếu cần.
+- **Key**: Chuỗi bit 64-bit cho DES single, hoặc 128-bit/192-bit cho TripleDES.
+
+Ví dụ: `./des encrypt "0001001000110100010101100111100010011010101111001101111011110001" "0001001100110100010101110111100110011011101111001101111111110001"`
+
+Chương trình hỗ trợ multi-block: chia input thành các block 64-bit, process từng block.
+
+Định dạng dữ liệu: Chuỗi bit (binary string), không hỗ trợ file hoặc text.
 
 ## 4. Output / Đầu ra
 
-TODO_STUDENT: Mô tả rõ đầu ra của chương trình.
+Chương trình in ra ciphertext (cho encrypt) hoặc plaintext (cho decrypt) dưới dạng chuỗi bit liên tiếp, không có định dạng đặc biệt.
 
-Gợi ý nên nêu:
-- ciphertext hiển thị ra sao
-- có in round keys hay không
-- có hỗ trợ giải mã hay không
-- với TripleDES thì đầu ra gồm những gì
+Ví dụ: `0111111010111111010001001001001100100011111110101111101011111000`
+
+Chương trình in round keys cho mỗi key trong quá trình generate (từ 1 đến 16).
+
+Hỗ trợ giải mã (decrypt) và TripleDES (triple_encrypt/triple_decrypt).
+
+Đối với TripleDES, sử dụng 3 keys (192-bit), process theo thứ tự encrypt-decrypt-encrypt.
 
 ## 5. Padding đang dùng
 
-TODO_STUDENT: Giải thích cơ chế padding em dùng.
+Sử dụng zero padding: nếu độ dài input không chia hết cho 64 bit, pad thêm bit '0' ở cuối cho đến khi chia hết.
 
-Gợi ý:
-- nếu plaintext dài hơn 64 bit thì chia block như thế nào
-- nếu thiếu bit thì pad bằng `0` ra sao
-- hạn chế của zero padding là gì
-- vì sao cách này chỉ phù hợp cho bài học nhập môn, không phải thiết kế an toàn hoàn chỉnh trong thực tế
+Ví dụ: input 70 bit -> pad thành 128 bit (2 blocks).
+
+Hạn chế: Không thể phân biệt giữa data thực và padding, dễ bị tấn công padding oracle. Không an toàn trong thực tế.
+
+Phù hợp cho bài học nhập môn vì đơn giản, không yêu cầu metadata.
 
 ## 6. Tests bắt buộc
 
@@ -98,6 +104,19 @@ Repo này đã tạo sẵn **5 tên file test mẫu** để sinh viên điền n
 Sinh viên phải tự hoàn thiện test và bổ sung minh chứng chạy.
 
 ## 7. Logs / Minh chứng
+
+Để chạy tests, vào thư mục tests và chạy từng script:
+
+```bash
+cd tests
+bash test_des_sample.sh
+bash test_encrypt_decrypt_roundtrip.sh
+# etc.
+```
+
+Minh chứng chạy được lưu trong thư mục logs/. Chạy scripts/run_sample.sh để test mẫu.
+
+Tất cả tests phải pass để đảm bảo implementation đúng.
 
 Thư mục `logs/` dùng để nộp minh chứng, ví dụ:
 - ảnh chụp màn hình khi chạy chương trình
